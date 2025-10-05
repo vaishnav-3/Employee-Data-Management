@@ -34,19 +34,36 @@ export async function POST(req: Request) {
       );
     }
 
+    // Check manually before inserting (better UX)
+    const existingEmployee = await prisma.employee.findUnique({
+      where: { email },
+    });
+
+    if (existingEmployee) {
+      return NextResponse.json(
+        { error: "Email already exists" },
+        { status: 409 } // Conflict
+      );
+    }
+
     const newEmployee = await prisma.employee.create({
       data: { name, email, position },
     });
 
     return NextResponse.json(newEmployee, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating employee:", error);
 
-    // Handle unique email error
-    if (error.code === "P2002") {
+    // ✅ Type-safe Prisma error handling
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code: string }).code === "P2002"
+    ) {
       return NextResponse.json(
         { error: "Email already exists" },
-        { status: 400 }
+        { status: 409 }
       );
     }
 
